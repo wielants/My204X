@@ -3,6 +3,7 @@ module My204X where
 import Data.List (transpose, intercalate, splitAt, (\\))
 import System.IO (hSetEcho, stdin)
 import System.Random (randomRIO)
+import Prelude hiding (Left, Right)
 
 --------
 -- TODO
@@ -10,6 +11,7 @@ import System.Random (randomRIO)
 -- 1. customize random cell values as distribution e.g. [(2, 9), (4, 1)]
 -- 2. user cursor keys
 -- 3. better UI
+-- 4. tests: QuickCheck? HSpec?
 --------
 
 -- parameters
@@ -26,7 +28,7 @@ cellWidth = length $ show luckyNumber
 ---
 
 type Board = [[Int]]
-data Direction = ShiftLeft | ShiftRight | ShiftUp | ShiftDown deriving (Show)
+data Direction = Left | Right | Up | Down deriving (Show)
 
 emptyBoard :: Board
 emptyBoard = replicate boardSize $ replicate boardSize emptyCell
@@ -56,9 +58,9 @@ setCell (x, y) v b = map add $ zip [1..] b
 
 showBoard :: Board -> [String]
 showBoard =  map showRow 
-   where showRow xs = intercalate "|" $ map (center cellWidth ' ' . show') xs
---         center n c xs = take n $ xs ++ repeat c
-         show' x = if (x == emptyCell) then " " else show x
+   where showRow  = intercalate "|" . map showCell
+         showCell = center cellWidth ' ' . showValue
+         showValue x = if (x == emptyCell) then " " else show x
          center n c xs = let l  = length xs
                              l2 = l `div` 2
                              n2 = n `div` 2
@@ -68,7 +70,7 @@ showBoard =  map showRow
                                take n $ replicate (n2 - l2) c ++ xs ++ repeat c
 
 compact :: [Int] -> [Int]
-compact [] = []
+compact []  = []
 compact [x] = [x]
 compact (x:y:xs)
    | x == emptyCell = compact (y:xs)
@@ -80,21 +82,21 @@ shiftArray :: [Int] -> [Int]
 shiftArray xs = take boardSize $ compact xs ++ repeat emptyCell
 
 shiftBoard :: Direction -> Board -> Board
-shiftBoard ShiftLeft  = doShiftLeft
-shiftBoard ShiftRight  = doShiftRight
-shiftBoard ShiftUp = transpose . doShiftLeft . transpose
-shiftBoard ShiftDown = transpose . doShiftRight . transpose
+shiftBoard Left  = shiftLeft
+shiftBoard Right = shiftRight
+shiftBoard Up    = transpose . shiftLeft . transpose
+shiftBoard Down  = transpose . shiftRight . transpose
 
-doShiftLeft = map shiftArray
-doShiftRight = map (reverse . shiftArray . reverse) 
+shiftLeft  = map shiftArray
+shiftRight = map (reverse . shiftArray . reverse) 
 
 data KeyMapping = Move Direction | Exit | Unknown deriving (Show)
 
 mapKey :: Char -> KeyMapping
-mapKey 'g' = Move ShiftLeft
-mapKey 'z' = Move ShiftUp
-mapKey 'h' = Move ShiftRight
-mapKey 'b' = Move ShiftDown
+mapKey 'g' = Move Left
+mapKey 'z' = Move Up
+mapKey 'h' = Move Right
+mapKey 'b' = Move Down
 mapKey 'x' = Exit
 mapKey _   = Unknown
 
@@ -136,15 +138,12 @@ addRandomCell b = do
 data GameState = Won | Lost | NextMove deriving (Show)
 
 gameState :: Board -> GameState
-gameState b = if (hasWon) then
-                 Won
-              else
-                 if (finished) then
-                   Lost
-                 else
-                   NextMove
-       where finished = emptyCells b == []
-             hasWon = luckyNumber `elem` (values b)
+gameState b 
+  | hasWon    = Won
+  | finished  = Lost
+  | otherwise = NextMove
+  where finished = emptyCells b == []
+        hasWon   = luckyNumber `elem` (values b)
 
 displayStatus :: String -> IO ()
 displayStatus xs = writeat (1, boardSize + 2) xs >> putStrLn ""
