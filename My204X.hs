@@ -40,10 +40,9 @@ testBoard = [ [  0,  2,  0,  0]
             , [  2,  2,  0,  8]]
 
 emptyCells :: Board -> [Pos]
-emptyCells b = concatMap (dropValue . filterEmptyCells) makeCoordinates
-     where dropValue = map (\(x, y, v) -> (x, y))
-           filterEmptyCells = filter (\( _, _, x) -> x == emptyCell)
-           makeCoordinates = map (\(y, xs) -> zipWith (\x v -> (x, y, v)) [1..] xs) $ zip [1..] b
+emptyCells b = [ (x, y) | (y, row) <- zip [1..] b,
+                          (x, value) <- zip [1..] row,
+                          value == emptyCell ]
 
 -- values of all non-empty cells
 values :: Board -> [Int]
